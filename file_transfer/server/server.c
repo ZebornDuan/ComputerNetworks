@@ -18,6 +18,10 @@
 #define EPOLL_SIZE 50
 #define BUFFER_SIZE 4096
 
+typedef int bool;
+#define True 0x01
+#define False 0x00
+
 void* session(int *argument) {
 	int fd = *argument;
 	char buffer[BUFFER_SIZE];
@@ -40,7 +44,7 @@ void* session(int *argument) {
 				printf("%s\n", buffer);
 				printf("%d\n", size);
 				if (size == 5 && strcmp(buffer, "ready") == 0) {
-					printf("here\n");
+					// printf("here\n");
 					while (1) {
 						int value = fread(buffer, sizeof(char), BUFFER_SIZE, file);
 						if (value < BUFFER_SIZE) {
@@ -65,20 +69,32 @@ void* session(int *argument) {
 
 		} else if (buffer[0] == 'p') {
 			FILE *file = fopen(buffer+1, "a+b");
+			bool tag = False;
 			if (file) {
+				long long *fsize = 0;
+				size = recv(fd, fsize, sizeof(long long), 0);
 				reply = "ok";
 				send(fd, reply, 2, 0);
+				struct timeval timeout = {3, 0};
+				setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 				while (1) {
-					size = recv(fd, buffer, sizeof(buffer), 0);
-					if (size > 0 && size < BUFFER_SIZE) {
+					// size = recv(fd, buffer, sizeof(buffer), 0);
+					size = recv(fd, buffer, sizeof(buffer), MSG_WAITALL);
+					if (size >= 0 && size < BUFFER_SIZE) {
 						fwrite(buffer, sizeof(char), size,file);
                         break;
-					} else {
+					} else if (size == BUFFER_SIZE) {
 						fwrite(buffer, sizeof(char), size, file);
                         memset(buffer, 0, sizeof(char) * BUFFER_SIZE);
+					} else {
+						tag = True;
+						printf("receive error!\n");
+						break;
 					}
 				}
 				fclose(file);
+				if (tag)
+					reply = "er";
 				send(fd, reply, 2, 0);
 				close(fd);
 			} else {
@@ -96,14 +112,17 @@ int main(int argc, char **argv) {
     struct sockaddr_in server_address;    // server address information
     struct sockaddr_in clientaddress;  
     socklen_t address_size = sizeof(clientaddress);
-    int yes = 1;  
+    // int yes = 1;
+    struct linger so_linger;
+    so_linger.l_onoff = 1;
+    so_linger.l_linger = 30;  //wait time limit 30s
   
     if ((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {  
         fprintf(stderr, "creating server socket error!\n");
-        exit(-1);  
-    }  
+        exit(-1);
+    }
   
-    if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {  
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &so_linger, sizeof(int)) == -1) {  
         fprintf(stderr, "set server socket error!\n");
         exit(-1);  
     }  
@@ -125,7 +144,7 @@ int main(int argc, char **argv) {
   
 	printf("listening port %d\n", PORT); 
 
-	pool_create(10);
+	pool_create(10); // could be larger
 
 	static struct epoll_event event, events[EPOLL_SIZE];
 	int epollfd = epoll_create(EPOLL_SIZE);
