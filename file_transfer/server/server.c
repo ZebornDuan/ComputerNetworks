@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <string.h>
+#include <signal.h>
 #include "pool.h"
 
 #define PORT 8000
@@ -41,10 +42,7 @@ void* session(int *argument) {
 				send(fd, reply, 2, 0);
 				size = recv(fd, buffer, sizeof(buffer), 0);
 				memset(&buffer[size], '\0', 1);
-				printf("%s\n", buffer);
-				printf("%d\n", size);
 				if (size == 5 && strcmp(buffer, "ready") == 0) {
-					// printf("here\n");
 					while (1) {
 						int value = fread(buffer, sizeof(char), BUFFER_SIZE, file);
 						if (value < BUFFER_SIZE) {
@@ -71,22 +69,19 @@ void* session(int *argument) {
 			FILE *file = fopen(buffer+1, "a+b");
 			bool tag = False;
 			if (file) {
-				long long *fsize = 0;
-				size = recv(fd, fsize, sizeof(long long), 0);
 				reply = "ok";
 				send(fd, reply, 2, 0);
-				struct timeval timeout = {3, 0};
-				setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 				while (1) {
-					// size = recv(fd, buffer, sizeof(buffer), 0);
 					size = recv(fd, buffer, sizeof(buffer), MSG_WAITALL);
 					if (size >= 0 && size < BUFFER_SIZE) {
+						printf("here%d\n", size);
 						fwrite(buffer, sizeof(char), size,file);
                         break;
 					} else if (size == BUFFER_SIZE) {
 						fwrite(buffer, sizeof(char), size, file);
                         memset(buffer, 0, sizeof(char) * BUFFER_SIZE);
 					} else {
+						printf("there\n");
 						tag = True;
 						printf("receive error!\n");
 						break;
@@ -107,7 +102,14 @@ void* session(int *argument) {
 	return NULL;
 }
 
+void exit_signal(int signal_number) {
+	destroy();
+	printf("The server has quit with all resources released!\n");
+	exit(0);
+}
+
 int main(int argc, char **argv) {
+	signal(SIGINT, exit_signal);
 	int socket_fd;
     struct sockaddr_in server_address;    // server address information
     struct sockaddr_in clientaddress;  
@@ -115,7 +117,7 @@ int main(int argc, char **argv) {
     // int yes = 1;
     struct linger so_linger;
     so_linger.l_onoff = 1;
-    so_linger.l_linger = 30;  //wait time limit 30s
+    so_linger.l_linger = 10;  //wait time limit 10s(FIN_WAIT_2)
   
     if ((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {  
         fprintf(stderr, "creating server socket error!\n");
@@ -127,9 +129,9 @@ int main(int argc, char **argv) {
         exit(-1);  
     }  
       
-    server_address.sin_family = AF_INET;         // host byte order  
-    server_address.sin_port = htons(PORT);     // short, network byte order  
-    server_address.sin_addr.s_addr = inet_addr("127.0.0.1"); // automatically fill with my IP  
+    server_address.sin_family = AF_INET;           
+    server_address.sin_port = htons(PORT);
+    server_address.sin_addr.s_addr = inet_addr("127.0.0.1");
     memset(server_address.sin_zero, '\0', sizeof(server_address.sin_zero));  
   
     if (bind(socket_fd, (struct sockaddr *)&server_address, sizeof(server_address)) == -1) {  
