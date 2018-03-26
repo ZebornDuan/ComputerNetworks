@@ -71,17 +71,17 @@ void* session(int *argument) {
 			if (file) {
 				reply = "ok";
 				send(fd, reply, 2, 0);
+				struct timeval timeout = {3, 0};
+				setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 				while (1) {
 					size = recv(fd, buffer, sizeof(buffer), MSG_WAITALL);
 					if (size >= 0 && size < BUFFER_SIZE) {
-						printf("here%d\n", size);
 						fwrite(buffer, sizeof(char), size,file);
                         break;
 					} else if (size == BUFFER_SIZE) {
 						fwrite(buffer, sizeof(char), size, file);
                         memset(buffer, 0, sizeof(char) * BUFFER_SIZE);
 					} else {
-						printf("there\n");
 						tag = True;
 						printf("receive error!\n");
 						break;
