@@ -1,4 +1,5 @@
 #include "server.h"
+#include <vector>
 
 using namespace std;
 
@@ -58,14 +59,43 @@ void* Server::test_beat(void* arguments) {
 
 void* Server::test_online(void* arguments) {
 	Sleep(15);
+	vector<string> offline_list;
 	for (unordered_map<string, user>::iterator i = user_list.begin(); i != user_list.end(); i++) {
 		time_t current = time(0);
 		if (current - i->second.time > 10) {
-			//offline
-		} 
+			offline_list.push_back(i->first);
+			user_list.erase(i);			
+		}	
+	}
+
+	string message = "offline";
+	for (int i = 0; i < offline_list.size(); i++)
+		message = message + " " + offline_list[i];
+
+	for (unordered_map<string, user>::iterator i = user_list.begin(); i != user_list.end(); i++) {
+		//send message
 	}
 }
 
 void Server::run() {
+	char buffer[4096];
+	while (1) {
+		int value = recvfrom(socket_s, &buffer, 4096, 0, (struct sockaddr*)&client, &length);
+		if (value < 0)
+			continue;
+		memset(buffer + value, '\0', 1);
+		stringstream stream;
+		stream << buffer;
+		string message_type;
+		stream >> message_type;
 
+		if (message_type == "login") {
+
+		} else if (message_type == "bye") {
+			
+		}
+		// login name ip port
+		// send user list
+		// tell users
+	}
 }

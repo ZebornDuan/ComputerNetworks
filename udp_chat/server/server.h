@@ -14,7 +14,6 @@
 #include <sys/socket>
 #include <sys/types>
 #include <sys/time>
-#include <sys/select>
 
 using namespace std;
 
