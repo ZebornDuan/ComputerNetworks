@@ -2,19 +2,19 @@
 #define SERVER_H
 
 #include <cstdio>
-#include <assert>
+#include <assert.h>
+#include <unistd.h>
 #include <vector>
 #include <cstring>
 #include <cstdlib>
-#include <pthread>
 #include <sstream>
 #include <iostream> 
 #include <algorithm>
 #include <unordered_map>
-#include <sys/socket>
-#include <sys/types>
-#include <sys/time>
-
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <arpa/inet.h>
 using namespace std;
 
 typedef struct User {
@@ -28,19 +28,20 @@ public:
 	Server();
 	~Server();
 
-	void bind();
+	void bind_address();
 	void run();
 
 private:
 	int socket_s;
 	int socket_b;
-	struct sockaddr_in server, beat, client;
+	sockaddr_in server, beat;
+	sockaddr_in client;
 	pthread_t beat_p, test_beat_p;
 
 	unordered_map<string, user> user_list;
 
-	void* test_beat(void* arguments);
-	void* test_online(void* arguments);
+	static void* test_beat(void* arguments);
+	static void* test_online(void* arguments);
 
 	void inform(string message);
 	

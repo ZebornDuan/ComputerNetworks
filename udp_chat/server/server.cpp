@@ -1,5 +1,6 @@
 #include "server.h"
 #include <vector>
+#include <pthread.h>
 
 using namespace std;
 
@@ -14,7 +15,7 @@ Server::Server() {
 
 Server::~Server() {}
 
-void Server::bind() {
+void Server::bind_address() {
 	bzero(&server, sizeof(server));
 	server.sin_family = AF_INET;
 	server.sin_port = htons(8000);
@@ -25,24 +26,25 @@ void Server::bind() {
 	beat.sin_port = htons(9000);
 	beat.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-	if (bind(socket_s, (struct sockaddr*)&server, sizeof(server)) < 0) {
+	if (bind(socket_s, (sockaddr*)&server, sizeof(server)) < 0) {
 		printf("fail to bind\n");
 		exit(-1);
 	}
 
-	if (bind(socket_b, (struct sockaddr*)&beat, sizeof(beat)) < 0) {
+	if (bind(socket_b, (sockaddr*)&beat, sizeof(beat)) < 0) {
 		printf("fail to bind\n");
 		exit(-1);
 	}
 }
 
 void* Server::test_beat(void* arguments) {
-	socklen_t length = sizeof(client);
+	Server* self = (Server*) arguments;
+	socklen_t length = sizeof(self->client);
 	int port;
 	string ip, name;
 	char buffer[4096];
 	while (1) {
-		int value = recvfrom(socket_b, &buffer, 4096, 0, (struct sockaddr*)&client, &length);
+		int value = recvfrom(self->socket_b, &buffer, 4096, 0, (sockaddr*)&(self->client), &length);
 		if (value < 0)
 			continue;
 		memset(buffer + value, '\0', 1);
@@ -50,55 +52,59 @@ void* Server::test_beat(void* arguments) {
 		stream << buffer;
 		stream >> name >> ip >> port;
 
-		user_list[name].ip = ip;
-		user_list[name].port = port;
-		user_list[name].time = time(0);
+		self->user_list[name].ip = ip;
+		self->user_list[name].port = port;
+		self->user_list[name].time = time(0);
 	}
 }
 
 void* Server::test_online(void* arguments) {
-	Sleep(15);
-	vector<string> offline_list;
-	for (unordered_map<string, user>::iterator i = user_list.begin(); i != user_list.end(); i++) {
-		time_t current = time(0);
-		if (current - i->second.time > 10) {
-			offline_list.push_back(i->first);
-			user_list.erase(i);			
-		}	
+	Server* self = (Server*) arguments;
+	while (1) {
+		sleep(15);
+		vector<string> offline_list;
+		for (unordered_map<string, user>::iterator i = self->user_list.begin(); i != self->user_list.end(); i++) {
+			time_t current = time(0);
+			if (current - i->second.time > 10) {
+				offline_list.push_back(i->first);
+				self->user_list.erase(i);			
+			}	
+		}
+
+		string message = "offline";
+		for (int i = 0; i < offline_list.size(); i++)
+			message = message + " " + offline_list[i];
+
+		self->inform(message);
 	}
-
-	string message = "offline";
-	for (int i = 0; i < offline_list.size(); i++)
-		message = message + " " + offline_list[i];
-
-	inform(message);
 }
 
 void Server::inform(string message) {
 	for (unordered_map<string, user>::iterator i = user_list.begin(); i != user_list.end(); i++) {
-		struct sockaddr_in destination;
-		bzero(destination, sizeof(destination));
+		sockaddr_in destination;
+		bzero(&destination, sizeof(destination));
 		destination.sin_family = AF_INET;
 		destination.sin_port = htons(i->second.port);
-		destination.sin_addr.s_addr = inet_addr(i->second.ip);
-		sendto(socket_s, message.c_str(), message.length(), 0, (struct sockaddr*)&destination, sizeof(struct sockaddr_in));
+		destination.sin_addr.s_addr = inet_addr(i->second.ip.c_str());
+		sendto(socket_s, message.c_str(), message.length(), 0, (sockaddr*)&destination, sizeof(sockaddr_in));
 	}
 }
 
 void Server::run() {
-	if (pthread_creat(&beat_p, NULL, test_beat, NULL) != 0) {
+	if (pthread_create(&beat_p, NULL, test_beat, this) != 0) {
 		printf("fail to create thread\n");
 		exit(-1);
 	}
 
-	if (pthread_creat(&test_beat_p, NULL, test_online, NULL) != 0) {
+	if (pthread_create(&test_beat_p, NULL, test_online, this) != 0) {
 		printf("fail to create thread\n");
 		exit(-1);
 	}
 
 	char buffer[4096];
 	while (1) {
-		int value = recvfrom(socket_s, &buffer, 4096, 0, (struct sockaddr*)&client, &length);
+		socklen_t length = sizeof(client);
+		int value = recvfrom(socket_s, &buffer, 4096, 0, (sockaddr*)&client, &length);
 		if (value < 0)
 			continue;
 		memset(buffer + value, '\0', 1);
@@ -111,16 +117,16 @@ void Server::run() {
 			string user_name, user_ip;
 			int user_port;
 			stream >> user_name >> user_ip >> user_port;
-			struct sockaddr_in destination;
-			bzero(destination, sizeof(destination));
+			sockaddr_in destination;
+			bzero(&destination, sizeof(destination));
 			destination.sin_family = AF_INET;
 			destination.sin_port = htons(user_port);
-			destination.sin_addr.s_addr = inet_addr(user_ip);
+			destination.sin_addr.s_addr = inet_addr(user_ip.c_str());
 			if (user_list.find(user_name) != user_list.end()) {
 				string message = "ok";
 				for (unordered_map<string, user>::iterator i = user_list.begin(); i != user_list.end(); i++)
 					message = message + " " + i->first + " " + i->second.ip + " " + to_string(i->second.port);
-				sendto(socket_s, message.c_str(), message.length(), 0, (struct sockaddr*)&destination, sizeof(struct sockaddr_in));
+				sendto(socket_s, message.c_str(), message.length(), 0, (sockaddr*)&destination, sizeof(sockaddr_in));
 				user new_user;
 				new_user.ip = user_ip;
 				new_user.port = user_port;
@@ -129,7 +135,7 @@ void Server::run() {
 				message = "on " + user_name + " " + user_ip + " " + to_string(user_port);
 				inform(message);
 			} else
-				sendto(socket_s, "no", 2, 0, (struct sockaddr*)&destination, sizeof(struct sockaddr_in));
+				sendto(socket_s, "no", 2, 0, (sockaddr*)&destination, sizeof(sockaddr_in));
 			
 		} else if (message_type == "bye") {
 			string user_name;

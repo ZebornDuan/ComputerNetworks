@@ -2,17 +2,19 @@
 #define CLIENT_H
 
 #include <cstdio>
-#include <assert>
+#include <assert.h>
 #include <vector>
 #include <cstring>
 #include <cstdlib>
-#include <pthread>
+#include <unistd.h>
+#include <pthread.h>
 #include <sstream>
 #include <iostream> 
 #include <algorithm>
 #include <unordered_map>
-#include <sys/socket>
-#include <sys/types>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
 
 using namespace std;
 
@@ -27,7 +29,7 @@ public:
 	~Client();
 
 	void run();
-	void bind();
+	void bind_address();
 	void print_command();
 	void print_user();
 
@@ -37,11 +39,11 @@ private:
 	int port_c, port_b;
 	pthread_t beat_p, receive_p;
 	string ip, name;
-	struct sockaddr_in server, beat, client, test_beat;
+	sockaddr_in server, beat, client, test_beat;
 	unordered_map<string, user> user_list;
 
-	void* beat(void* arguments);
-	void* receive(void* arguments);
+	static void* send_beat(void* arguments);
+	static void* receive(void* arguments);
 };
 
 #endif

@@ -10,6 +10,6 @@ Server* server;
 
 int main() {
 	server = new Server();
-	server.bind();
-	server.run();
+	server->bind_address();
+	server->run();
 }

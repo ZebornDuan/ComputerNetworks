@@ -30,7 +30,7 @@ Client::Client(int port) {
 
 Client::~Client() {}
 
-void Client::bind() {
+void Client::bind_address() {
 	bzero(&client, sizeof(client));
 	client.sin_family = AF_INET;
 	client.sin_port = htons(port_c);
@@ -41,12 +41,12 @@ void Client::bind() {
 	beat.sin_port = htons(port_b);
 	beat.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-	if (bind(socket_c, (struct sockaddr*)&server, sizeof(server)) < 0) {
+	if (bind(socket_c, (sockaddr*)&server, sizeof(server)) < 0) {
 		printf("fail to bind\n");
 		exit(-1);
 	}
 
-	if (bind(socket_b, (struct sockaddr*)&beat, sizeof(beat)) < 0) {
+	if (bind(socket_b, (sockaddr*)&beat, sizeof(beat)) < 0) {
 		printf("fail to bind\n");
 		exit(-1);
 	}
@@ -68,12 +68,13 @@ void Client::print_user() {
 	cout << endl;
 }
 
-void* Client::beat(void* arguments) {
+void* Client::send_beat(void* arguments) {
+	Client* self = (Client*) arguments;
 	while (1) {
-		if (on) {
-			Sleep(5);
-			string message = name + " " + ip + " " + to_string(port_c);
-			sendto(socket_c, message.c_str(), message.length(), 0, (struct sockaddr*)&test_beat, sizeof(struct sockaddr_in));
+		if (self->on) {
+			sleep(5);
+			string message = self->name + " " + self->ip + " " + to_string(self->port_c);
+			sendto(self->socket_c, message.c_str(), message.length(), 0, (sockaddr*)&(self->test_beat), sizeof(sockaddr_in));
 		} else
 			break;
 	}
@@ -82,12 +83,13 @@ void* Client::beat(void* arguments) {
 }
 
 void* Client::receive(void* arguments) {
+	Client* self = (Client*) arguments;
 	char buffer[4096];
-	struct sockaddr_in source;
-	socklen_t length = sizeof(server);
+	sockaddr_in source;
+	socklen_t length = sizeof(source);
 	while (1) {
-		if (on) {
-			int value = recvfrom(socket_c, &buffer, 4096, 0, (struct sockaddr*)&source, &length);
+		if (self->on) {
+			int value = recvfrom(self->socket_c, &buffer, 4096, 0, (sockaddr*)&source, &length);
 			if (value < 0) 
 				continue;
 			else {
@@ -100,12 +102,12 @@ void* Client::receive(void* arguments) {
 					cout << "message from " << who << ":" << mail << endl;
 				} else if (what == "on") {
 					user new_user;
-					stream >> new_user.ip >> new_user>>port;
-					user_list[who] = new_user;
+					stream >> new_user.ip >> new_user.port;
+					self->user_list[who] = new_user;
 					cout << "User named " << who << " has logged in." << endl;
 				} else if (what == "offline") {
 					cout << "User named " << who << " has logged out." << endl;
-					user_list.erase(who);
+					self->user_list.erase(who);
 				}
 			}
 		}
@@ -117,11 +119,11 @@ void Client::run() {
 	print_command();
 	while (1) {
 		cin >> name;
-		string message = "login " + name + " " + ip + " " + port;
-		sendto(socket_c, message.c_str(), message.length(), 0, (struct sockaddr*)&server, sizeof(struct sockaddr_in));
+		string message = "login " + name + " " + ip + " " + to_string(port_c);
+		sendto(socket_c, message.c_str(), message.length(), 0, (sockaddr*)&server, sizeof(sockaddr_in));
 		char buffer[4096];
 		socklen_t length = sizeof(server);
-		int value = recvfrom(socket_c, &buffer, 4096, 0, (struct sockaddr*)&server, &length);
+		int value = recvfrom(socket_c, &buffer, 4096, 0, (sockaddr*)&server, &length);
 		if (value < 0)
 			cout << "Fail to connect to server, please input your nickname and try again!" << endl;
 		else {
@@ -148,7 +150,7 @@ void Client::run() {
 		}
 	}
 
-	if (pthread_create(&beat_p, NULL, beat, NULL) != 0) {
+	if (pthread_create(&beat_p, NULL, send_beat, NULL) != 0) {
 		printf("fail to create thread\n");
 		exit(-1);
 	}
@@ -166,14 +168,14 @@ void Client::run() {
 		if (command == "chat") {
 			string who;
 			stream >> who;
-			struct sockaddr_in destination;
-			bzero(destination, sizeof(destination));
+			sockaddr_in destination;
+			bzero(&destination, sizeof(destination));
 			destination.sin_family = AF_INET;
 			destination.sin_port = htons(user_list[who].port);
-			destination.sin_addr.s_addr = inet_addr(user_list[who].ip);
+			destination.sin_addr.s_addr = inet_addr(user_list[who].ip.c_str());
 			string mail = stream.str().substr(5 + who.length());
 			string message = "chat " + name + mail;
-			sendto(socket_c, message.c_str(), message.length(), 0, (struct sockaddr*)&destination, sizeof(struct sockaddr_in));
+			sendto(socket_c, message.c_str(), message.length(), 0, (sockaddr*)&destination, sizeof(sockaddr_in));
 			cout << "send to " << who << ":" << mail << endl;
 		} else if (command == "help")
 			print_command();
@@ -182,8 +184,8 @@ void Client::run() {
 		else if (command == "quit") {
 			cout << "" << endl;
 			on = false;
-			pthread_join(beat_p);
-			pthread_join(receive_p);
+			pthread_join(beat_p, NULL);
+			pthread_join(receive_p, NULL);
 			break;
 		} else
 			cout << "Error, undefined command!" << endl;
