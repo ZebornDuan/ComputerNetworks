@@ -77,6 +77,7 @@ void* Server::test_online(void* arguments) {
 void Server::inform(string message) {
 	for (unordered_map<string, user>::iterator i = user_list.begin(); i != user_list.end(); i++) {
 		struct sockaddr_in destination;
+		bzero(destination, sizeof(destination));
 		destination.sin_family = AF_INET;
 		destination.sin_port = htons(i->second.port);
 		destination.sin_addr.s_addr = inet_addr(i->second.ip);
@@ -107,20 +108,25 @@ void Server::run() {
 		stream >> message_type;
 
 		if (message_type == "login") {
-			string user_name, user_ip, user_port;
+			string user_name, user_ip;
+			int user_port;
 			stream >> user_name >> user_ip >> user_port;
 			struct sockaddr_in destination;
+			bzero(destination, sizeof(destination));
 			destination.sin_family = AF_INET;
 			destination.sin_port = htons(user_port);
 			destination.sin_addr.s_addr = inet_addr(user_ip);
 			if (user_list.find(user_name) != user_list.end()) {
-				sendto(socket_s, "ok", 2, 0, (struct sockaddr*)&destination, sizeof(struct sockaddr_in));
+				string message = "ok";
+				for (unordered_map<string, user>::iterator i = user_list.begin(); i != user_list.end(); i++)
+					message = message + " " + i->first + " " + i->second.ip + " " + to_string(i->second.port);
+				sendto(socket_s, message.c_str(), message.length(), 0, (struct sockaddr*)&destination, sizeof(struct sockaddr_in));
 				user new_user;
 				new_user.ip = user_ip;
 				new_user.port = user_port;
 				new_user.time = time(0);
 				user_list[user_name] = new_user;
-				string message = "on " + user_name + " " + user_ip + " " + user_port;
+				message = "on " + user_name + " " + user_ip + " " + to_string(user_port);
 				inform(message);
 			} else
 				sendto(socket_s, "no", 2, 0, (struct sockaddr*)&destination, sizeof(struct sockaddr_in));

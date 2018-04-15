@@ -29,17 +29,21 @@ public:
 	~Server();
 
 	void bind();
+	void run();
 
 private:
 	int socket_s;
 	int socket_b;
 	struct sockaddr_in server, beat, client;
+	pthread_t beat_p, test_beat_p;
 
 	unordered_map<string, user> user_list;
 
 	void* test_beat(void* arguments);
 	void* test_online(void* arguments);
-	void run();
+
+	void inform(string message);
+	
 };
 
 #endif

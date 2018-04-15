@@ -37,6 +37,7 @@ private:
 	int port_c, port_b;
 	pthread_t beat_p, receive_p;
 	string ip, name;
+	struct sockaddr_in server, beat, client, test_beat;
 	unordered_map<string, user> user_list;
 
 	void* beat(void* arguments);
