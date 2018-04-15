@@ -11,6 +11,17 @@ Server::Server() {
 		printf("fail to create sockets!\n");
 		exit(-1);
 	}
+
+	int yes =1;
+	if (setsockopt(socket_s, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) { 
+        perror("setsockopt");  
+        exit(-1);  
+    }  
+
+    if (setsockopt(socket_b, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {  
+        perror("setsockopt");  
+        exit(-1);  
+    }  
 }
 
 Server::~Server() {}
@@ -39,12 +50,12 @@ void Server::bind_address() {
 
 void* Server::test_beat(void* arguments) {
 	Server* self = (Server*) arguments;
-	socklen_t length = sizeof(self->client);
+	socklen_t length = sizeof(self->beat);
 	int port;
 	string ip, name;
 	char buffer[4096];
 	while (1) {
-		int value = recvfrom(self->socket_b, &buffer, 4096, 0, (sockaddr*)&(self->client), &length);
+		int value = recvfrom(self->socket_b, &buffer, 4096, 0, (sockaddr*)&(self->beat), &length);
 		if (value < 0)
 			continue;
 		memset(buffer + value, '\0', 1);
@@ -66,16 +77,18 @@ void* Server::test_online(void* arguments) {
 		for (unordered_map<string, user>::iterator i = self->user_list.begin(); i != self->user_list.end(); i++) {
 			time_t current = time(0);
 			if (current - i->second.time > 10) {
-				offline_list.push_back(i->first);
-				self->user_list.erase(i);			
+				offline_list.push_back(i->first);		
 			}	
 		}
 
 		string message = "offline";
-		for (int i = 0; i < offline_list.size(); i++)
+		for (int i = 0; i < offline_list.size(); i++) {
 			message = message + " " + offline_list[i];
-
-		self->inform(message);
+			self->user_list.erase(offline_list[i]);
+		}
+		if (!offline_list.empty()) {
+			self->inform(message);
+		}
 	}
 }
 
@@ -100,19 +113,20 @@ void Server::run() {
 		printf("fail to create thread\n");
 		exit(-1);
 	}
-
 	char buffer[4096];
 	while (1) {
 		socklen_t length = sizeof(client);
-		int value = recvfrom(socket_s, &buffer, 4096, 0, (sockaddr*)&client, &length);
+		// cout << "here"<<endl;
+		int value = recvfrom(socket_s, &buffer, 4096, 0, (sockaddr*)&server, &length);
 		if (value < 0)
 			continue;
 		memset(buffer + value, '\0', 1);
+		cout<<buffer<<endl;
 		stringstream stream;
 		stream << buffer;
 		string message_type;
 		stream >> message_type;
-
+		// cout << message_type<<endl;
 		if (message_type == "login") {
 			string user_name, user_ip;
 			int user_port;
@@ -122,7 +136,7 @@ void Server::run() {
 			destination.sin_family = AF_INET;
 			destination.sin_port = htons(user_port);
 			destination.sin_addr.s_addr = inet_addr(user_ip.c_str());
-			if (user_list.find(user_name) != user_list.end()) {
+			if (user_list.find(user_name) == user_list.end()) {
 				string message = "ok";
 				for (unordered_map<string, user>::iterator i = user_list.begin(); i != user_list.end(); i++)
 					message = message + " " + i->first + " " + i->second.ip + " " + to_string(i->second.port);

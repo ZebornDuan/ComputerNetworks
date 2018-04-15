@@ -17,6 +17,17 @@ Client::Client(int port) {
 		exit(-1);
 	}
 
+	int yes = 1;
+	if (setsockopt(socket_c, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {  
+        perror("setsockopt");  
+        exit(-1);  
+    }  
+
+    if (setsockopt(socket_b, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {  
+        perror("setsockopt");  
+        exit(1);  
+    }  
+
 	bzero(&server, sizeof(server));
 	server.sin_family = AF_INET;
 	server.sin_port = htons(8000);
@@ -41,7 +52,7 @@ void Client::bind_address() {
 	beat.sin_port = htons(port_b);
 	beat.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-	if (bind(socket_c, (sockaddr*)&server, sizeof(server)) < 0) {
+	if (bind(socket_c, (sockaddr*)&client, sizeof(client)) < 0) {
 		printf("fail to bind\n");
 		exit(-1);
 	}
@@ -62,6 +73,10 @@ void Client::print_command() {
 }
 
 void Client::print_user() {
+	if (user_list.begin() == user_list.end()) {
+		cout << "No other users are online" << endl;
+		return;
+	}
 	cout << "Online users are as follow: <name> <ip> <port>" << endl;
 	for (unordered_map<string, user>::iterator i = user_list.begin(); i != user_list.end(); i++)
 		cout << i->first << " " << i->second.ip << " " << i->second.port << endl;
@@ -74,7 +89,7 @@ void* Client::send_beat(void* arguments) {
 		if (self->on) {
 			sleep(5);
 			string message = self->name + " " + self->ip + " " + to_string(self->port_c);
-			sendto(self->socket_c, message.c_str(), message.length(), 0, (sockaddr*)&(self->test_beat), sizeof(sockaddr_in));
+			sendto(self->socket_b, message.c_str(), message.length(), 0, (sockaddr*)&(self->test_beat), sizeof(sockaddr_in));
 		} else
 			break;
 	}
@@ -85,14 +100,15 @@ void* Client::send_beat(void* arguments) {
 void* Client::receive(void* arguments) {
 	Client* self = (Client*) arguments;
 	char buffer[4096];
-	sockaddr_in source;
-	socklen_t length = sizeof(source);
+	// sockaddr_in source;
+	socklen_t length = sizeof(self->client);
 	while (1) {
 		if (self->on) {
-			int value = recvfrom(self->socket_c, &buffer, 4096, 0, (sockaddr*)&source, &length);
+			int value = recvfrom(self->socket_c, &buffer, 4096, 0, (sockaddr*)&(self->client), &length);
 			if (value < 0) 
 				continue;
 			else {
+				memset(buffer + value, '\0', 1);
 				stringstream stream;
 				stream << buffer;
 				string what, who;
@@ -123,7 +139,7 @@ void Client::run() {
 		sendto(socket_c, message.c_str(), message.length(), 0, (sockaddr*)&server, sizeof(sockaddr_in));
 		char buffer[4096];
 		socklen_t length = sizeof(server);
-		int value = recvfrom(socket_c, &buffer, 4096, 0, (sockaddr*)&server, &length);
+		int value = recvfrom(socket_c, &buffer, 4096, 0, (sockaddr*)&client, &length);
 		if (value < 0)
 			cout << "Fail to connect to server, please input your nickname and try again!" << endl;
 		else {
@@ -150,20 +166,22 @@ void Client::run() {
 		}
 	}
 
-	if (pthread_create(&beat_p, NULL, send_beat, NULL) != 0) {
+	if (pthread_create(&beat_p, NULL, send_beat, this) != 0) {
 		printf("fail to create thread\n");
 		exit(-1);
 	}
 
-	if (pthread_create(&receive_p, NULL, receive, NULL) != 0) {
+	if (pthread_create(&receive_p, NULL, receive, this) != 0) {
 		printf("fail to create thread\n");
 		exit(-1);
 	}
 
-	string command;
-	while (cin >> command) {
+	char commands[1001];
+	while (cin.getline(commands, 1000)) {
+		// cout << command <<endl;
 		stringstream stream;
-		stream << command;
+		stream << commands;
+		string command;
 		stream >> command;
 		if (command == "chat") {
 			string who;
@@ -187,7 +205,7 @@ void Client::run() {
 			pthread_join(beat_p, NULL);
 			pthread_join(receive_p, NULL);
 			break;
-		} else
+		} else if (command.length() > 0)
 			cout << "Error, undefined command!" << endl;
 	}
 }
