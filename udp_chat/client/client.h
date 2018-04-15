@@ -13,14 +13,12 @@
 #include <unordered_map>
 #include <sys/socket>
 #include <sys/types>
-#include <sys/time>
 
 using namespace std;
 
 typedef struct User {
 	string ip;
 	int port;
-	time_t time;
 }user;
 
 class Client {
@@ -30,17 +28,19 @@ public:
 
 	void run();
 	void bind();
-	void instruction();
+	void print_command();
+	void print_user();
 
 private:
 	bool on;
 	int socket_c, socket_b;
 	int port_c, port_b;
-	string ip;
+	pthread_t beat_p, receive_p;
+	string ip, name;
 	unordered_map<string, user> user_list;
 
 	void* beat(void* arguments);
-
+	void* receive(void* arguments);
 };
 
 #endif

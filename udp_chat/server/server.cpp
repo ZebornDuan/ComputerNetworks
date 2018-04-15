@@ -4,7 +4,6 @@
 using namespace std;
 
 Server::Server() {
-	count = 0;
 	socket_s = socket(AF_INET, SOCK_DGRAM, 0);
 	socket_b = socket(AF_INET, SOCK_DGRAM, 0);
 	if (socket_s < 0 || socket_b < 0) {
@@ -32,7 +31,7 @@ void Server::bind() {
 	}
 
 	if (bind(socket_b, (struct sockaddr*)&beat, sizeof(beat)) < 0) {
-		printf("fail to bing\n");
+		printf("fail to bind\n");
 		exit(-1);
 	}
 }
@@ -72,12 +71,30 @@ void* Server::test_online(void* arguments) {
 	for (int i = 0; i < offline_list.size(); i++)
 		message = message + " " + offline_list[i];
 
+	inform(message);
+}
+
+void Server::inform(string message) {
 	for (unordered_map<string, user>::iterator i = user_list.begin(); i != user_list.end(); i++) {
-		//send message
+		struct sockaddr_in destination;
+		destination.sin_family = AF_INET;
+		destination.sin_port = htons(i->second.port);
+		destination.sin_addr.s_addr = inet_addr(i->second.ip);
+		sendto(socket_s, message.c_str(), message.length(), 0, (struct sockaddr*)&destination, sizeof(struct sockaddr_in));
 	}
 }
 
 void Server::run() {
+	if (pthread_creat(&beat_p, NULL, test_beat, NULL) != 0) {
+		printf("fail to create thread\n");
+		exit(-1);
+	}
+
+	if (pthread_creat(&test_beat_p, NULL, test_online, NULL) != 0) {
+		printf("fail to create thread\n");
+		exit(-1);
+	}
+
 	char buffer[4096];
 	while (1) {
 		int value = recvfrom(socket_s, &buffer, 4096, 0, (struct sockaddr*)&client, &length);
@@ -90,12 +107,32 @@ void Server::run() {
 		stream >> message_type;
 
 		if (message_type == "login") {
-
-		} else if (message_type == "bye") {
+			string user_name, user_ip, user_port;
+			stream >> user_name >> user_ip >> user_port;
+			struct sockaddr_in destination;
+			destination.sin_family = AF_INET;
+			destination.sin_port = htons(user_port);
+			destination.sin_addr.s_addr = inet_addr(user_ip);
+			if (user_list.find(user_name) != user_list.end()) {
+				sendto(socket_s, "ok", 2, 0, (struct sockaddr*)&destination, sizeof(struct sockaddr_in));
+				user new_user;
+				new_user.ip = user_ip;
+				new_user.port = user_port;
+				new_user.time = time(0);
+				user_list[user_name] = new_user;
+				string message = "on " + user_name + " " + user_ip + " " + user_port;
+				inform(message);
+			} else
+				sendto(socket_s, "no", 2, 0, (struct sockaddr*)&destination, sizeof(struct sockaddr_in));
 			
+		} else if (message_type == "bye") {
+			string user_name;
+			stream >> user_name;
+			if (user_list.find(user_name) != user_list.end()) {
+				user_list.erase(user_name);
+				string message = "offline " + user_name;
+				inform(message);
+			}
 		}
-		// login name ip port
-		// send user list
-		// tell users
 	}
 }
