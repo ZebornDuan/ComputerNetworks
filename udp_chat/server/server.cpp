@@ -145,9 +145,9 @@ void Server::run() {
 				new_user.ip = user_ip;
 				new_user.port = user_port;
 				new_user.time = time(0);
-				user_list[user_name] = new_user;
 				message = "on " + user_name + " " + user_ip + " " + to_string(user_port);
 				inform(message);
+				user_list[user_name] = new_user;
 			} else
 				sendto(socket_s, "no", 2, 0, (sockaddr*)&destination, sizeof(sockaddr_in));
 			

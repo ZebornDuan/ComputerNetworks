@@ -32,7 +32,7 @@ public:
 	void bind_address();
 	void print_command();
 	void print_user();
-
+	void quit();
 private:
 	bool on;
 	int socket_c, socket_b;

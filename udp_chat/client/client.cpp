@@ -130,6 +130,16 @@ void* Client::receive(void* arguments) {
 	}
 }
 
+void CLient::quit() {
+	cout << "releasing resources, please wait..." << endl;
+	on = false;
+	pthread_join(beat_p, NULL);
+	pthread_join(receive_p, NULL);
+	string message = "bye " + name;
+	sendto(socket_c, message.c_str(), message.length(), 0, (sockaddr*)&server, sizeof(sockaddr_in));
+	cout << "bye..." << endl;
+}
+
 void Client::run() {
 	cout << "Welcome, please input your nickname first!" << endl;
 	print_command();
@@ -200,10 +210,7 @@ void Client::run() {
 		else if (command == "user")
 			print_user();
 		else if (command == "quit") {
-			cout << "" << endl;
-			on = false;
-			pthread_join(beat_p, NULL);
-			pthread_join(receive_p, NULL);
+			quit();
 			break;
 		} else if (command.length() > 0)
 			cout << "Error, undefined command!" << endl;
