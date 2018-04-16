@@ -88,7 +88,7 @@ void* Client::send_beat(void* arguments) {
 	while (1) {
 		if (self->on) {
 			sleep(5);
-			string message = self->name + " " + self->ip + " " + to_string(self->port_c);
+			string message = self->name + " " + self->ip + " " + to_string(self->port_c) + "\n";
 			sendto(self->socket_b, message.c_str(), message.length(), 0, (sockaddr*)&(self->test_beat), sizeof(sockaddr_in));
 		} else
 			break;
@@ -100,7 +100,8 @@ void* Client::send_beat(void* arguments) {
 void* Client::receive(void* arguments) {
 	Client* self = (Client*) arguments;
 	char buffer[4096];
-	// sockaddr_in source;
+	stringstream stream;
+	string last = "";
 	socklen_t length = sizeof(self->client);
 	while (1) {
 		if (self->on) {
@@ -108,34 +109,47 @@ void* Client::receive(void* arguments) {
 			if (value < 0) 
 				continue;
 			else {
-				memset(buffer + value, '\0', 1);
-				stringstream stream;
-				stream << buffer;
-				string what, who;
-				stream >> what >> who;
-				if (what == "chat") {
-					string mail = stream.str().substr(6 + who.length());
-					cout << "message from " << who << ":" << mail << endl;
-				} else if (what == "on") {
-					user new_user;
-					stream >> new_user.ip >> new_user.port;
-					self->user_list[who] = new_user;
-					cout << "User named " << who << " has logged in." << endl;
-				} else if (what == "offline") {
-					cout << "User named " << who << " has logged out." << endl;
-					self->user_list.erase(who);
+				int b = 0;
+				for (int index = 0; index < value; index++) {
+					if (buffer[index] == '\n') {
+						memset(buffer + index, '\0', 1);
+						stream << last << buffer + b;
+						last = "";
+						string what, who;
+						stream >> what >> who;
+						if (what == "" || who == "") {
+							b = index + 1;
+							continue;
+						} else if (what == "chat") {
+							string mail = stream.str().substr(6 + who.length());
+							cout << "message from " << who << ":" << mail << endl;
+						} else if (what == "on") {
+							user new_user;
+							stream >> new_user.ip >> new_user.port;
+							self->user_list[who] = new_user;
+							cout << "User named " << who << " has logged in." << endl;
+						} else if (what == "offline") {
+							cout << "User named " << who << " has logged out." << endl;
+							self->user_list.erase(who);
+						}
+						b = index + 1;
+						stream.clear();
+						stream.str("");
+					}
 				}
+				if (buffer[value - 1] != '\0')
+					last = buffer + b;
 			}
 		}
 	}
 }
 
-void CLient::quit() {
+void Client::quit() {
 	cout << "releasing resources, please wait..." << endl;
 	on = false;
 	pthread_join(beat_p, NULL);
 	pthread_join(receive_p, NULL);
-	string message = "bye " + name;
+	string message = "bye " + name + "\n";
 	sendto(socket_c, message.c_str(), message.length(), 0, (sockaddr*)&server, sizeof(sockaddr_in));
 	cout << "bye..." << endl;
 }
@@ -145,7 +159,7 @@ void Client::run() {
 	print_command();
 	while (1) {
 		cin >> name;
-		string message = "login " + name + " " + ip + " " + to_string(port_c);
+		string message = "login " + name + " " + ip + " " + to_string(port_c) + "\n";
 		sendto(socket_c, message.c_str(), message.length(), 0, (sockaddr*)&server, sizeof(sockaddr_in));
 		char buffer[4096];
 		socklen_t length = sizeof(server);
@@ -202,7 +216,7 @@ void Client::run() {
 			destination.sin_port = htons(user_list[who].port);
 			destination.sin_addr.s_addr = inet_addr(user_list[who].ip.c_str());
 			string mail = stream.str().substr(5 + who.length());
-			string message = "chat " + name + mail;
+			string message = "chat " + name + mail + "\n";
 			sendto(socket_c, message.c_str(), message.length(), 0, (sockaddr*)&destination, sizeof(sockaddr_in));
 			cout << "send to " << who << ":" << mail << endl;
 		} else if (command == "help")

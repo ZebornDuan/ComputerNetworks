@@ -83,7 +83,7 @@ void* Server::test_online(void* arguments) {
 
 		string message = "offline";
 		for (int i = 0; i < offline_list.size(); i++) {
-			message = message + " " + offline_list[i];
+			message = message + " " + offline_list[i] + "\n";
 			self->user_list.erase(offline_list[i]);
 		}
 		if (!offline_list.empty()) {
@@ -114,51 +114,62 @@ void Server::run() {
 		exit(-1);
 	}
 	char buffer[4096];
+	stringstream stream;
+	string last = "";
 	while (1) {
 		socklen_t length = sizeof(client);
-		// cout << "here"<<endl;
 		int value = recvfrom(socket_s, &buffer, 4096, 0, (sockaddr*)&server, &length);
 		if (value < 0)
 			continue;
-		memset(buffer + value, '\0', 1);
-		cout<<buffer<<endl;
-		stringstream stream;
-		stream << buffer;
-		string message_type;
-		stream >> message_type;
-		// cout << message_type<<endl;
-		if (message_type == "login") {
-			string user_name, user_ip;
-			int user_port;
-			stream >> user_name >> user_ip >> user_port;
-			sockaddr_in destination;
-			bzero(&destination, sizeof(destination));
-			destination.sin_family = AF_INET;
-			destination.sin_port = htons(user_port);
-			destination.sin_addr.s_addr = inet_addr(user_ip.c_str());
-			if (user_list.find(user_name) == user_list.end()) {
-				string message = "ok";
-				for (unordered_map<string, user>::iterator i = user_list.begin(); i != user_list.end(); i++)
-					message = message + " " + i->first + " " + i->second.ip + " " + to_string(i->second.port);
-				sendto(socket_s, message.c_str(), message.length(), 0, (sockaddr*)&destination, sizeof(sockaddr_in));
-				user new_user;
-				new_user.ip = user_ip;
-				new_user.port = user_port;
-				new_user.time = time(0);
-				message = "on " + user_name + " " + user_ip + " " + to_string(user_port);
-				inform(message);
-				user_list[user_name] = new_user;
-			} else
-				sendto(socket_s, "no", 2, 0, (sockaddr*)&destination, sizeof(sockaddr_in));
-			
-		} else if (message_type == "bye") {
-			string user_name;
-			stream >> user_name;
-			if (user_list.find(user_name) != user_list.end()) {
-				user_list.erase(user_name);
-				string message = "offline " + user_name;
-				inform(message);
+		int b = 0;
+		for (int index = 0; index < value; index++) {
+			if (buffer[index] == '\n') {
+				memset(buffer + index, '\0', 1);
+				stream << last << buffer + b;
+				last = "";
+				string message_type;
+				stream >> message_type;
+				if (message_type == "login") {
+					string user_name, user_ip;
+					int user_port;
+					stream >> user_name >> user_ip >> user_port;
+					sockaddr_in destination;
+					bzero(&destination, sizeof(destination));
+					destination.sin_family = AF_INET;
+					destination.sin_port = htons(user_port);
+					destination.sin_addr.s_addr = inet_addr(user_ip.c_str());
+					if (user_list.find(user_name) == user_list.end()) {
+						string message = "ok";
+						for (unordered_map<string, user>::iterator i = user_list.begin(); i != user_list.end(); i++)
+							message = message + " " + i->first + " " + i->second.ip + " " + to_string(i->second.port);
+						message = message + "\n";
+						sendto(socket_s, message.c_str(), message.length(), 0, (sockaddr*)&destination, sizeof(sockaddr_in));
+						user new_user;
+						new_user.ip = user_ip;
+						new_user.port = user_port;
+						new_user.time = time(0);
+						message = "on " + user_name + " " + user_ip + " " + to_string(user_port) + "\n";
+						inform(message);
+						user_list[user_name] = new_user;
+					} else
+						sendto(socket_s, "no\n", 3, 0, (sockaddr*)&destination, sizeof(sockaddr_in));
+					
+				} else if (message_type == "bye") {
+					string user_name;
+					stream >> user_name;
+					if (user_list.find(user_name) != user_list.end()) {
+						user_list.erase(user_name);
+						string message = "offline " + user_name + "\n";
+						inform(message);
+					}
+				}
+
+				b = index + 1;
+				stream.clear();
+				stream.str("");
 			}
 		}
+		if (buffer[value - 1] != '\0')
+			last = buffer + b;
 	}
 }
