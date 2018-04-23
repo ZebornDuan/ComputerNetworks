@@ -1,0 +1,13 @@
+INPUT(
+./debug\connectdialog.o
+./debug\createdialog.o
+./debug\gameboard.o
+./debug\gomoku.o
+./debug\main.o
+./debug\saveloaddialog.o
+./debug\moc_connectdialog.o
+./debug\moc_createdialog.o
+./debug\moc_gameboard.o
+./debug\moc_gomoku.o
+./debug\moc_saveloaddialog.o
+);
