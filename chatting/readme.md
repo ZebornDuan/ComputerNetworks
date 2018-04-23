@@ -20,5 +20,5 @@ All the offline information such as user accounts and their friend lists is save
 
 ## Preview
 
-![preview](https://github.com/ZebornDuan/NetworkProgramming/blob/master/chatting/download/1.png)
-![preview](https://github.com/ZebornDuan/NetworkProgramming/blob/master/chatting/download/2.png)
+![preview](https://github.com/ZebornDuan/NetworkProgramming/blob/master/chatting/server/download/1.png)
+![preview](https://github.com/ZebornDuan/NetworkProgramming/blob/master/chatting/server/download/2.png)

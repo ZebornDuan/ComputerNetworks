@@ -1,4 +1,4 @@
-// #include "server.h"
+#include "server.h"
 #include <sstream>
 #include <string>
 #include <iostream>

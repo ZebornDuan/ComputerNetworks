@@ -27,7 +27,7 @@ class ChatWindow():
 		self.bar.pack(side=RIGHT,fill=Y)
 
 		self.button1 = Button(self.frame3, text='send', width=8, command=self.send)
-		self.button2 = Button(self.frame3, text='concel', width=8)
+		self.button2 = Button(self.frame3, text='cancel', width=8)
 		self.button3 = Button(self.frame3, text='search', width=8, command=self.search)
 		self.button4 = Button(self.frame3, text='add', width=8, command=self.add)
 		self.button5 = Button(self.frame3, text='file', width=8, command=self.file)
