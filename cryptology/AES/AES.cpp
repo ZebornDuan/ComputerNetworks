@@ -53,7 +53,7 @@ inline static int get_right_4bits(int n) {
     return n & 0x0000000f;
 }
 
-static int query_SBox(int index) {
+inline static int query_SBox(int index) {
     int r = get_left_4bits(index);
     int c = get_right_4bits(index);
     return S_Box[r][c];
@@ -64,7 +64,7 @@ inline static int char2int(char c) {
     return result & 0x000000ff;
 }
 
-static void to_array(char *s, int array[4][4]) {
+inline static void to_array(char *s, int array[4][4]) {
     int k = 0;
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++) {
@@ -82,13 +82,7 @@ static void print_array(int a[4][4]) {
     printf("\n");
 }
 
-static void print_ASSCI(char *s, int length) {
-    for (int i = 0; i < length; i++)
-        printf("0x%x ", char2int(s[i]));
-    printf("\n");
-}
-
-static int string2word(char *s) {
+inline static int string2word(char *s) {
     int w1 = char2int(s[0]);
     w1 = w1 << 24;
     int w2 = char2int(s[1]);
@@ -100,7 +94,7 @@ static int string2word(char *s) {
 }
 
 
-static void int2array(int n, int array[4]) {
+inline static void int2array(int n, int array[4]) {
     int b1 = n >> 24;
     array[0] = b1 & 0x000000ff;
     int b2 = n >> 16;
@@ -111,7 +105,7 @@ static void int2array(int n, int array[4]) {
 }
 
 
-static void left_loop(int array[4], int step) {
+inline static void left_loop(int array[4], int step) {
     int t[4];
     for (int i = 0; i < 4; i++)
         t[i] = array[i];
@@ -124,7 +118,7 @@ static void left_loop(int array[4], int step) {
     }
 }
 
-static int array2int(int array[4]) {
+inline static int array2int(int array[4]) {
     int b1 = array[0] << 24;
     int b2 = array[1] << 16;
     int b3 = array[2] << 8;
@@ -140,7 +134,7 @@ static const int Rcon[10] = {
     0x1b000000, 0x36000000 
 };
 
-static int T(int n, int round) {
+inline static int T(int n, int round) {
     int nArray[4];
     int2array(n, nArray);
     left_loop(nArray, 1);
@@ -154,7 +148,7 @@ static int T(int n, int round) {
 
 static int w[44];
 
-static void extend_key(char *key) {
+inline static void extend_key(char *key) {
     for (int i = 0; i < 4; i++)
         w[i] = string2word(key + i * 4);
 
@@ -168,7 +162,7 @@ static void extend_key(char *key) {
 }
 
 
-static void add_round_key(int array[4][4], int round) {
+inline static void add_round_key(int array[4][4], int round) {
     int warray[4];
     for (int i = 0; i < 4; i++) {
         int2array(w[round * 4 + i], warray);
@@ -180,13 +174,13 @@ static void add_round_key(int array[4][4], int round) {
 }
 
 
-static void substitute_bytes(int array[4][4]){
+inline static void substitute_bytes(int array[4][4]){
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++)
             array[i][j] = query_SBox(array[i][j]);
 }
 
-static void shift_rows(int array[4][4]) {
+inline static void shift_rows(int array[4][4]) {
     int r2[4], r3[4], r4[4];
     for (int i = 0; i < 4; i++) {
         r2[i] = array[1][i];
@@ -213,7 +207,7 @@ static const int column_mix_matrix[4][4] = {
     3, 1, 1, 2 
 };
 
-static int GF_x2(int s) {
+inline static int GF_x2(int s) {
     int result = s << 1;
     int a = result & 0x00000100;
 
@@ -225,39 +219,39 @@ static int GF_x2(int s) {
     return result;
 }
 
-static int GF_x3(int s) {
+inline static int GF_x3(int s) {
     return GF_x2(s) ^ s;
 }
 
-static int GF_x4(int s) {
+inline static int GF_x4(int s) {
     return GF_x2(GF_x2(s));
 }
 
-static int GF_x8(int s) {
+inline static int GF_x8(int s) {
     return GF_x2(GF_x4(s));
 }
 
-static int GF_x9(int s) {
+inline static int GF_x9(int s) {
     return GF_x8(s) ^ s;
 }
 
-static int GF_x11(int s) {
+inline static int GF_x11(int s) {
     return GF_x9(s) ^ GF_x2(s);
 }
 
-static int GF_x12(int s) {
+inline static int GF_x12(int s) {
     return GF_x8(s) ^ GF_x4(s);
 }
 
-static int GF_x13(int s) {
+inline static int GF_x13(int s) {
     return GF_x12(s) ^ s;
 }
 
-static int GF_x14(int s) {
+inline static int GF_x14(int s) {
     return GF_x12(s) ^ GF_x2(s);
 }
 
-static int GF_x(int n, int s) {
+inline static int GF_x(int n, int s) {
     int result;
 
     if (n == 1)
@@ -278,7 +272,7 @@ static int GF_x(int n, int s) {
     return result;
 }
 
-static void mix_columns(int array[4][4]) {
+inline static void mix_columns(int array[4][4]) {
     int t[4][4];
 
     for (int i = 0; i < 4; i++)
@@ -292,7 +286,7 @@ static void mix_columns(int array[4][4]) {
         }
 }
 
-static void array2string(int array[4][4], char *s) {
+inline static void array2string(int array[4][4], char *s) {
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++)
             *s++ = (char)array[j][i]; 
@@ -319,7 +313,6 @@ void aes_encrypt(char *p, int length, char *key) {
         add_round_key(pArray, 10);
         array2string(pArray, p + k);
     }
-    print_ASSCI(p, length);
 }
 
 

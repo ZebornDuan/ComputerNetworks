@@ -9,7 +9,6 @@ key : cipher key
 */
 
 void aes_encrypt(char *p, int length, char *key);
-
 void aes_decrypt(char *c, int length, char *key);
 
 #endif
