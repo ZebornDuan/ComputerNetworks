@@ -26,4 +26,4 @@ Windows环境下基于Qt套接字接口的网络五子棋游戏。服务器与�
 
 #### Contemporary Cryptology
 
-包括一些密码学算法的实现。AES-256加解密算法、SHA3（keccak）哈希算法、求解最短线性移位寄存器（线性综合解）的BM算法。
+包括一些密码学算法的实现。AES-256加解密算法、SHA3（keccak）哈希算法、求解最短线性移位寄存器（线性综合解）的BM算法、Miller-Rabin素性检测。
