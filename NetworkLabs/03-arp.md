@@ -52,7 +52,7 @@ scapy相关资料：
 文档地址：[http://www.secdev.org/projects/scapy/doc/](http://www.secdev.org/projects/scapy/doc/)
 中文版教程：[https://github.com/Larryxi/Scapy_zh-cn](https://github.com/Larryxi/Scapy_zh-cn)
 
-scapy实现的arpspoof源代码如下：./codes/arp.py
+scapy实现的arpspoof源代码如下：./codes/arp-mitm/arp.py
 ```python
 from optparse import OptionParser
 from scapy.all import get_if_hwaddr, getmacbyip, ARP, Ether, sendp
@@ -126,7 +126,7 @@ sudo apt-get install libpcap-dev
 pip install pypcap
 pip install dpkt
 ```
-抓包的脚本：./codes/wiretap.py
+抓包的脚本：./codes/arp-mitm/wiretap.py
 ```python
 import pcap
 import dpkt
@@ -202,7 +202,7 @@ mitmproxy的安装很简单，执行`pip install mitmproxy`即可。但是这里
 2. -p 指点代理的端口，这里和之前路由转发的端口保持一致，默认也是运行在8080端口
 3. -s 使用嵌入脚本。在嵌入脚本中定义事件的处理函数，mitmproxy会在对应的事件发生时调用处理。
 
-这里使用的脚本如下：./codes/joker.py
+这里使用的脚本如下：./codes/arp-mitm/joker.py
 ```python
 import mitmproxy.http
 from mitmproxy import ctx
